@@ -12,7 +12,7 @@ find_package(OpenCV REQUIRED COMPONENTS
 add_subdirectory(extern)
 
 add_library(${PROJECT_NAME}
-    "src/ImageMsgBridge.cpp"
+    "src/CvImageMsgBuffer.cpp"
 )
 
 add_library(${package_name}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
