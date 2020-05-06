@@ -1,11 +1,14 @@
 #include <iostream>
 
 #include <network/Node.h>
+#include <network/TcpPublisher.h>
 
 #include <opencv2/core.hpp>
 #include <opencv2/videoio.hpp>
 
-const unsigned short IMG_PORT = 10000;
+#include <mobile_robotics_framework/CvImageMsgBuffer.h>
+
+const unsigned short IMG_PORT = 50000;
 
 int main(int argc, char *argv[]) {
     // Initialize ntwk publishers/subscribers
@@ -22,7 +25,7 @@ int main(int argc, char *argv[]) {
     while(true) {
         cv::Mat img;
         if (cam.read(img)) {
-
+            imgPublisher->publish(mrf::convertCvImageToMsgBuffer(img));
         }
 
         node.runOnce();
