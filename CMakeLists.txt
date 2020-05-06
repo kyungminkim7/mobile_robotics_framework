@@ -1,12 +1,21 @@
 cmake_minimum_required(VERSION 3.5...3.10)
-project(kbot VERSION 1.0.0)
+project(mobile_robotics_framework VERSION 1.0.0)
+
+set(package_name mobile_robotics_framework)
+
+find_package(OpenCV REQUIRED COMPONENTS
+    core
+    imgcodecs
+    videoio
+)
 
 add_subdirectory(extern)
 
-# Create targets and set properties
-add_executable(${PROJECT_NAME}
-    "src/main.cpp"
+add_library(${PROJECT_NAME}
+    "src/ImageMsgBridge.cpp"
 )
+
+add_library(${package_name}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}
     PUBLIC
@@ -18,6 +27,10 @@ target_include_directories(${PROJECT_NAME}
 )
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
+    network::network
+    opencv_core
+    opencv_imgcodecs
+    opencv_videoio
 )
 
 target_compile_features(${PROJECT_NAME}
@@ -28,3 +41,5 @@ target_compile_features(${PROJECT_NAME}
         cxx_lambda_init_captures
         cxx_range_for
 )
+
+add_subdirectory(apps)
