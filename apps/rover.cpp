@@ -14,10 +14,10 @@ const unsigned short IMG_PORT = 50000;
 int main(int argc, char *argv[]) {
     // Initialize ntwk publishers/subscribers
     ntwk::Node node;
-    auto imgPublisher = node.advertise(IMG_PORT);
+    auto imgPublisher = node.advertise(IMG_PORT, 1);
 
     // Initialize camera
-    cv::VideoCapture cam(2);
+    cv::VideoCapture cam(0);
     if (!cam.isOpened()) {
         std::cerr << "Failed to open camera\n";
         return 1;
@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
             imgPublisher->publish(mrf::convertCvImageToMsgBuffer(img));
         }
 
-        node.runOnce();
+        node.update();
     }
 
     return 0;
