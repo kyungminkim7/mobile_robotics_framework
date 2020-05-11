@@ -12,11 +12,11 @@ std::shared_ptr<flatbuffers::DetachedBuffer> convertCvImageToMsgBuffer(const cv:
         break;
 
     case CV_8UC4:
-        imgEncoding = sensor_msgs::ImageEncoding::BGRA8;
+        imgEncoding = sensor_msgs::ImageEncoding::RGBA8;
         break;
 
     default:
-        imgEncoding = sensor_msgs::ImageEncoding::BGR8;
+        imgEncoding = sensor_msgs::ImageEncoding::RGB8;
         break;
     }
 

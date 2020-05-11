@@ -6,6 +6,7 @@ set(package_name mobile_robotics_framework)
 find_package(OpenCV REQUIRED COMPONENTS
     core
     imgcodecs
+    imgproc
     videoio
 )
 
@@ -30,6 +31,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     network::network
     opencv_core
     opencv_imgcodecs
+    opencv_imgproc
     opencv_videoio
 )
 
