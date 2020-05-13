@@ -1,23 +1,75 @@
 #include <network/TcpPublisher.h>
 
 #include <asio/write.hpp>
+#include <std_msgs/Compressed_generated.h>
+#include <zlib/zlib.h>
 
+namespace {
+
+std::shared_ptr<flatbuffers::DetachedBuffer> compressMsg(std::shared_ptr<flatbuffers::DetachedBuffer> msg) {
+    // Initialize compression
+    z_stream zStream;
+    zStream.zalloc = Z_NULL;
+    zStream.zfree = Z_NULL;
+    zStream.opaque = Z_NULL;
+
+    if (deflateInit(&zStream, Z_DEFAULT_COMPRESSION) != Z_OK) {
+        return nullptr;
+    }
+
+    // Compress msg
+    zStream.avail_in = msg->size();
+    zStream.next_in = msg->data();
+
+    const auto numAvailableBytes = deflateBound(&zStream, msg->size());
+    auto compressedBytes = std::make_unique<uint8_t[]>(numAvailableBytes);
+    zStream.avail_out = numAvailableBytes;
+    zStream.next_out = compressedBytes.get();
+
+    if (deflate(&zStream, Z_FINISH) != Z_STREAM_END) {
+        deflateEnd(&zStream);
+        return nullptr;
+    }
+
+    const auto numCompressedBytes = numAvailableBytes - zStream.avail_out;
+
+    // Release resources no longer needed
+    if (deflateEnd(&zStream)!= Z_OK) {
+        return nullptr;
+    }
+
+    const auto uncompressedMsgSize = msg->size();
+    msg = nullptr;
+
+    // Build compressedMsg
+    flatbuffers::FlatBufferBuilder msgBuilder;
+    auto compressedMsgData = msgBuilder.CreateVector(compressedBytes.get(), numCompressedBytes);
+    auto compressedMsg = std_msgs::CreateCompressed(msgBuilder,
+                                                    uncompressedMsgSize,
+                                                    compressedMsgData);
+    msgBuilder.Finish(compressedMsg);
+
+    return std::make_shared<flatbuffers::DetachedBuffer>(msgBuilder.Release());
+}
+
+} // namespace
 
 namespace ntwk {
 
 using namespace asio::ip;
 
 std::shared_ptr<TcpPublisher> TcpPublisher::create(asio::io_context &ioContext, unsigned short port,
-                                                   unsigned int msgQueueSize) {
-    std::shared_ptr<TcpPublisher> publisher(new TcpPublisher(ioContext, port, msgQueueSize));
+                                                   unsigned int msgQueueSize, bool compressed) {
+    std::shared_ptr<TcpPublisher> publisher(new TcpPublisher(ioContext, port, msgQueueSize, compressed));
     publisher->listenForConnections();
     return publisher;
 }
 
-TcpPublisher::TcpPublisher(asio::io_context &ioContext, unsigned short port, unsigned int msgQueueSize) :
+TcpPublisher::TcpPublisher(asio::io_context &ioContext, unsigned short port,
+                           unsigned int msgQueueSize, bool compressed) :
     ioContext(ioContext),
     socketAcceptor(ioContext, tcp::endpoint(tcp::v4(), port)),
-    msgQueueSize(msgQueueSize) { }
+    msgQueueSize(msgQueueSize), compressed(compressed){ }
 
 void TcpPublisher::listenForConnections() {
     auto socket = std::make_unique<tcp::socket>(this->ioContext);
@@ -47,10 +99,19 @@ void TcpPublisher::removeSocket(tcp::socket *socket) {
 }
 
 void TcpPublisher::publish(std::shared_ptr<flatbuffers::DetachedBuffer> msg) {
-    this->msgQueue.emplace(std::move(msg));
-    while (this->msgQueue.size() > this->msgQueueSize) {
+    while (this->msgQueue.size() >= this->msgQueueSize) {
         this->msgQueue.pop();
     }
+
+    if (this->compressed) {
+        msg = compressMsg(std::move(msg));
+
+        if (msg == nullptr) {
+            return;
+        }
+    }
+
+    this->msgQueue.emplace(std::move(msg));
 }
 
 void TcpPublisher::update() {
