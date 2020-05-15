@@ -14,7 +14,7 @@ const unsigned short IMG_PORT = 50000;
 int main(int argc, char *argv[]) {
     // Initialize ntwk publishers/subscribers
     ntwk::Node node;
-    auto imgPublisher = node.advertise(IMG_PORT, 1, true);
+    auto imgPublisher = node.advertise(IMG_PORT, 5, true);
 
     // Initialize camera
     cv::VideoCapture cam(0);
