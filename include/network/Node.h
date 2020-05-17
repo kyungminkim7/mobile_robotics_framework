@@ -4,14 +4,17 @@
 #include <cstdint>
 #include <forward_list>
 #include <functional>
-#include <future>
 #include <memory>
 #include <mutex>
+#include <thread>
 
 #include <asio/io_context.hpp>
 
+#include "Compression.h"
+
 namespace ntwk {
 
+struct Image;
 class TcpPublisher;
 class TcpSubscriber;
 
@@ -22,10 +25,15 @@ public:
 
     std::shared_ptr<TcpPublisher> advertise(unsigned short port,
                                             unsigned int msgQueueSize=1,
-                                            bool compressed=false);
+                                            Compression compression=Compression::NONE);
     std::shared_ptr<TcpSubscriber> subscribe(const std::string &host, unsigned short port,
                                              std::function<void(std::unique_ptr<uint8_t[]>)> msgReceivedHandler,
-                                             unsigned int msgQueueSize=1, bool compressed=false);
+                                             unsigned int msgQueueSize=1,
+                                             Compression Compression=Compression::NONE);
+    std::shared_ptr<TcpSubscriber> subscribe(const std::string &host, unsigned short port,
+                                             std::function<void(std::unique_ptr<Image>)> imgMsgReceivedHandler,
+                                             unsigned int msgQueueSize=1,
+                                             Compression Compression=Compression::NONE);
 
     void update();
 
@@ -39,7 +47,7 @@ private:
     std::mutex subscribersMutex;
 
     std::atomic<bool> running;
-    std::future<void> updateFuture;
+    std::thread updateThread;
 };
 
 } // namespace ntwk

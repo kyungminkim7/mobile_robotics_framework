@@ -1,6 +1,5 @@
 #pragma once
 
-#include <future>
 #include <list>
 #include <memory>
 #include <mutex>
@@ -11,6 +10,8 @@
 #include <asio/io_context.hpp>
 #include <std_msgs/Header_generated.h>
 
+#include "Compression.h"
+
 namespace ntwk {
 
 class TcpPublisher : public std::enable_shared_from_this<TcpPublisher> {
@@ -18,27 +19,29 @@ public:
     static std::shared_ptr<TcpPublisher> create(asio::io_context &ioContext,
                                                 unsigned short port,
                                                 unsigned int msgQueueSize,
-                                                bool compressed);
+                                                Compression compression);
 
     void publish(std::shared_ptr<flatbuffers::DetachedBuffer> msg);
+    void publishImage(unsigned int width, unsigned int height, uint8_t channels,
+                      const uint8_t data[]);
 
     void update();
 
 private:
     TcpPublisher(asio::io_context &ioContext, unsigned short port,
-                 unsigned int msgQueueSize, bool compressed);
+                 unsigned int msgQueueSize, Compression compression);
     void listenForConnections();
     void removeSocket(asio::ip::tcp::socket *socket);
 
     static void sendMsgHeader(std::shared_ptr<ntwk::TcpPublisher> publisher,
                               asio::ip::tcp::socket *socket,
-                              std::shared_ptr<std_msgs::Header> msgHeader,
-                              std::shared_ptr<flatbuffers::DetachedBuffer> msg,
+                              std::shared_ptr<const std_msgs::Header> msgHeader,
+                              std::shared_ptr<const flatbuffers::DetachedBuffer> msg,
                               unsigned int totalMsgHeaderBytesTransferred);
 
     static void sendMsg(std::shared_ptr<ntwk::TcpPublisher> publisher,
                         asio::ip::tcp::socket *socket,
-                        std::shared_ptr<flatbuffers::DetachedBuffer> msg,
+                        std::shared_ptr<const flatbuffers::DetachedBuffer> msg,
                         unsigned int totalMsgBytesTransferred);
 
     asio::io_context &ioContext;
@@ -48,12 +51,11 @@ private:
     std::mutex socketsMutex;
 
     std::queue<std::shared_ptr<flatbuffers::DetachedBuffer>> msgQueue;
-    std::queue<std::future<std::shared_ptr<flatbuffers::DetachedBuffer>>> compressedMsgQueue;
     unsigned int msgQueueSize;
     std::mutex msgQueueMutex;
     std::weak_ptr<flatbuffers::DetachedBuffer> msgBeingSent;
 
-    bool compressed;
+    Compression compression;
 };
 
 } // namespace ntwk
