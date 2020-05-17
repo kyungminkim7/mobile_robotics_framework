@@ -7,14 +7,12 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/videoio.hpp>
 
-#include <mobile_robotics_framework/CvImageMsgBuffer.h>
-
 const unsigned short IMG_PORT = 50000;
 
 int main(int argc, char *argv[]) {
     // Initialize ntwk publishers/subscribers
     ntwk::Node node;
-    auto imgPublisher = node.advertise(IMG_PORT, 5, true);
+    auto imgPublisher = node.advertise(IMG_PORT, 5, ntwk::Compression::JPEG);
 
     // Initialize camera
     cv::VideoCapture cam(0);
@@ -28,7 +26,7 @@ int main(int argc, char *argv[]) {
         if (cam.read(img)) {
             cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
             cv::flip(img, img, 0);
-            imgPublisher->publish(mrf::convertCvImageToMsgBuffer(img));
+            imgPublisher->publishImage(img.cols, img.rows, 3, img.data);
         }
 
         node.update();
