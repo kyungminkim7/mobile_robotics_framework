@@ -1,7 +1,7 @@
 #include <iostream>
 
+#include <network/Compression.h>
 #include <network/Node.h>
-#include <network/Rate.h>
 #include <network/TcpPublisher.h>
 
 #include <opencv2/core.hpp>
@@ -13,7 +13,7 @@ const unsigned short IMG_PORT = 50000;
 int main(int argc, char *argv[]) {
     // Initialize ntwk publishers/subscribers
     ntwk::Node node;
-    auto imgPublisher = node.advertise(IMG_PORT, ntwk::Compression::JPEG);
+    auto imgPublisher = node.advertiseImage(IMG_PORT, &ntwk::compression::image::jpeg::compressMsg);
 
     // Initialize camera
     cv::VideoCapture cam(0);
@@ -28,7 +28,7 @@ int main(int argc, char *argv[]) {
             cv::resize(img, img, cv::Size(), 0.5f, 0.5f);
             cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
             cv::flip(img, img, 0);
-            imgPublisher->publishImage(img.cols, img.rows, 3, img.data);
+            imgPublisher->publish(img.cols, img.rows, 3, img.data);
         }
 
         node.runOnce();
