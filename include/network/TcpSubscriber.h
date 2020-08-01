@@ -5,47 +5,34 @@
 #include <memory>
 #include <mutex>
 #include <queue>
+#include <type_traits>
 
 #include <asio/ip/tcp.hpp>
 #include <asio/steady_timer.hpp>
 #include <std_msgs/Header_generated.h>
 #include <std_msgs/MessageControl_generated.h>
 
-#include "Compression.h"
-
 namespace ntwk {
 
 struct Image;
 
-class TcpSubscriber : public std::enable_shared_from_this<TcpSubscriber> {
+template<typename T, typename DecompressionStrategy>
+class TcpSubscriber {
 public:
-    using MsgReceivedHandler = std::function<void(std::unique_ptr<uint8_t[]>)>;
-    using ImageMsgReceivedHandler = std::function<void(std::unique_ptr<Image>)>;
+    using MsgReceivedHandler = std::function<void(std::unique_ptr<T>)>;
 
     static std::shared_ptr<TcpSubscriber> create(asio::io_context &mainContext,
                                                  asio::io_context &subscriberContext,
                                                  const std::string &host, unsigned short port,
                                                  MsgReceivedHandler msgReceivedHandler,
-                                                 Compression compression);
-
-    static std::shared_ptr<TcpSubscriber> create(asio::io_context &mainContext,
-                                                 asio::io_context &subscriberContext,
-                                                 const std::string &host, unsigned short port,
-                                                 ImageMsgReceivedHandler imgMsgReceivedHandler,
-                                                 Compression compression);
+                                                 DecompressionStrategy decompressionStrategy);
 
 private:
     TcpSubscriber(asio::io_context &mainContext,
                   asio::io_context &subscriberContext,
                   const std::string &host, unsigned short port,
                   MsgReceivedHandler msgReceivedHandler,
-                  Compression compression);
-
-    TcpSubscriber(asio::io_context &mainContext,
-                  asio::io_context &subscriberContext,
-                  const std::string &host, unsigned short port,
-                  ImageMsgReceivedHandler imgMsgReceivedHandler,
-                  Compression compression);
+                  DecompressionStrategy decompressionStrategy);
 
     static void connect(std::shared_ptr<TcpSubscriber> subscriber);
 
@@ -57,7 +44,8 @@ private:
                            std::unique_ptr<uint8_t[]> msg,
                            unsigned int msgSize_bytes, unsigned int totalMsgBytesReceived);
 
-    static void processMsg(std::shared_ptr<TcpSubscriber> subscriber, std::unique_ptr<uint8_t[]> msg);
+    static void processMsg(std::shared_ptr<TcpSubscriber> subscriber,
+                           std::unique_ptr<uint8_t[]> msgBuffer);
     static void postMsgHandlingTask(std::shared_ptr<TcpSubscriber> subscriber);
     static void postImgMsgHandlingTask(std::shared_ptr<TcpSubscriber> subscriber);
 
@@ -77,15 +65,16 @@ private:
     std::unique_ptr<asio::steady_timer> socketReconnectTimer;
 
     MsgReceivedHandler msgReceivedHandler;
-    ImageMsgReceivedHandler imgMsgReceivedHandler;
 
     // Queues for double buffering msgs
-    std::queue<std::unique_ptr<uint8_t[]>> msgQueue;
-    std::queue<std::unique_ptr<Image>> imgMsgQueue;
+    std::queue<std::unique_ptr<T>> msgQueue;
     std::mutex msgQueueMutex;
     static const unsigned int MSG_QUEUE_SIZE = 2u;
 
-    Compression compression;
+    std::conditional_t<std::is_function<DecompressionStrategy>::value,
+                       std::add_pointer_t<DecompressionStrategy>, DecompressionStrategy> decompressionStrategy;
 };
 
 } // namespace ntwk
+
+#include "TcpSubscriber_impl.h"
