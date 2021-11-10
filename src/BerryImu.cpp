@@ -299,8 +299,8 @@ void BerryImu::selectDevice(int addr) {
     }
 }
 
-uint8_t BerryImu::readByte() {
-    auto result = i2c_smbus_read_byte(this->fd);
+uint8_t BerryImu::readByte(uint8_t cmd) {
+    auto result = i2c_smbus_read_byte_data(this->fd, cmd);
     if (fd == -1) {
         throw std::system_error(errno, std::generic_category(), 
                                 "Failed to read byte from imu");

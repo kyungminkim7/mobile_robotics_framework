@@ -11,7 +11,7 @@ public:
 
 private:
     void selectDevice(int addr);
-    uint8_t readByte();
+    uint8_t readByte(uint8_t cmd);
     void readBlock(uint8_t cmd, uint8_t size, uint8_t data[]);
 
 private:
