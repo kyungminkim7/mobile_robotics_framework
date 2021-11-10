@@ -2,78 +2,50 @@
 
 #include <cstdint>
 #include <functional>
+#include <map>
 #include <memory>
-#include <thread>
+#include <utility>
 
 #include <asio/io_context.hpp>
+#include <flatbuffers/flatbuffers.h>
 
-#include "Compression.h"
-#include "Image.h"
-#include "TcpPublisher.h"
-#include "TcpSubscriber.h"
+#include "MsgTypeId.h"
+#include "Thread.h"
 
 namespace ntwk {
 
+class TcpPublisher;
+class TcpSubscriber;
+
 class Node {
+private:
+    using Endpoint = std::pair<std::string, unsigned short>;
+    using ContextPtr = std::shared_ptr<asio::io_context>;
+    using PublisherPtr = std::shared_ptr<TcpPublisher>;
+    using SubscriberPtr = std::shared_ptr<TcpSubscriber>;
+    using MsgHandler = std::function<void(std::unique_ptr<uint8_t[]> &&)>;
+
 public:
-    Node();
+
+    explicit Node(ContextPtr context=std::make_shared<asio::io_context>());
     ~Node();
 
-    template<typename CompressionStrategy=decltype(compression::none::compressMsg)>
-    std::shared_ptr<TcpPublisher<CompressionStrategy>> advertise(unsigned short port,
-                                                                 CompressionStrategy compressionStrategy=compression::none::compressMsg);
+    void advertise(unsigned short port);
+    void subscribe(const Endpoint &endpoint, MsgTypeId msgTypeId, MsgHandler msgHandler);
 
-    template<typename CompressionStrategy=decltype(compression::image::none::compressMsg)>
-    std::shared_ptr<TcpPublisher<CompressionStrategy>> advertiseImage(unsigned short port,
-                                                                      CompressionStrategy compressionStrategy=compression::image::none::compressMsg);
-
-    template<typename DecompressionStrategy=decltype(compression::none::decompressMsg)>
-    std::shared_ptr<TcpSubscriber<uint8_t[], DecompressionStrategy>> subscribe(const std::string &host, unsigned short port,
-                                                                               std::function<void(std::unique_ptr<uint8_t[]>)> msgReceivedHandler,
-                                                                               DecompressionStrategy decompressionStrategy=compression::none::decompressMsg);
-
-    template<typename DecompressionStrategy=decltype(compression::image::none::decompressMsg)>
-    std::shared_ptr<TcpSubscriber<Image, DecompressionStrategy>> subscribeImage(const std::string &host, unsigned short port,
-                                                                                std::function<void(std::unique_ptr<Image>)> imgMsgReceivedHandler,
-                                                                                DecompressionStrategy decompressionStrategy=compression::image::none::decompressMsg);
+    void publish(MsgTypeId msgTypeId, std::shared_ptr<flatbuffers::DetachedBuffer> msg);
 
     void run();
     void runOnce();
 
 private:
-    asio::io_context mainContext;
-    asio::io_context tasksContext;
+    ContextPtr mainContext;
+    ContextPtr ntwkContext;
 
-    std::thread tasksThread;
+    std::map<Endpoint, SubscriberPtr> subscribers;
+    PublisherPtr publisher;
+
+    Thread ntwkThread;
 };
-
-template<typename CompressionStrategy>
-std::shared_ptr<TcpPublisher<CompressionStrategy>> Node::advertise(unsigned short port, CompressionStrategy compressionStrategy) {
-    return TcpPublisher<CompressionStrategy>::create(this->tasksContext, port, std::move(compressionStrategy));
-}
-
-template<typename CompressionStrategy>
-std::shared_ptr<TcpPublisher<CompressionStrategy>> Node::advertiseImage(unsigned short port, CompressionStrategy compressionStrategy) {
-    return TcpPublisher<CompressionStrategy>::create(this->tasksContext, port, std::move(compressionStrategy));
-}
-
-template<typename DecompressionStrategy>
-std::shared_ptr<TcpSubscriber<uint8_t[], DecompressionStrategy>> Node::subscribe(const std::string &host, unsigned short port,
-                                                                                 std::function<void (std::unique_ptr<uint8_t[]>)> msgReceivedHandler,
-                                                                                 DecompressionStrategy decompressionStrategy) {
-    return TcpSubscriber<uint8_t[], DecompressionStrategy>::create(this->mainContext, this->tasksContext,
-                                                                   host, port,
-                                                                   std::move(msgReceivedHandler),
-                                                                   std::move(decompressionStrategy));
-}
-
-template<typename DecompressionStrategy>
-std::shared_ptr<TcpSubscriber<Image, DecompressionStrategy>> Node::subscribeImage(const std::string &host, unsigned short port,
-                                                                                  std::function<void (std::unique_ptr<Image>)> imgMsgReceivedHandler,
-                                                                                  DecompressionStrategy decompressionStrategy) {
-    return TcpSubscriber<Image, DecompressionStrategy>::create(this->mainContext, this->tasksContext,
-                                                               host, port, std::move(imgMsgReceivedHandler),
-                                                               std::move(decompressionStrategy));
-}
 
 } // namespace ntwk

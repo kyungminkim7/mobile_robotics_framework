@@ -9,9 +9,14 @@ add_subdirectory(extern)
 
 # Create targets and set properties
 add_library(${PROJECT_NAME}
-    "src/Compression.cpp"
+    "src/Image.cpp"
+    "src/ImageJpeg.cpp"
     "src/Node.cpp"
     "src/Rate.cpp"
+    "src/TcpPublisher.cpp"
+    "src/TcpSubscriber.cpp"
+    "src/Thread.cpp"
+    "src/ThreadGuard.cpp"
 )
 
 add_library(${package_name}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
