@@ -1,5 +1,18 @@
 #include <mobile_robotics_framework/BerryImu.h>
 
+#include <string>
+#include <system_error>
+
+extern "C" {
+#include <errno.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
+
+#include <linux/i2c-dev.h>
+#include <i2c/smbus.h>
+}
+
 namespace {
 
 namespace LIS3MDL {
@@ -265,5 +278,42 @@ constexpr auto WHO_AM_I_M_RSP   = 0x3D;
 } // namespace
 
 namespace mrf {
+
+BerryImu::BerryImu(int device) {
+    std::string filename("/dev/i2c-" + std::to_string(device));
+    this->fd = open(filename.c_str(), O_RDWR);
+    if (fd == -1) {
+        throw std::system_error(errno, std::generic_category(),
+                                "Failed to open " + filename);
+    }
+}
+
+BerryImu::~BerryImu() {
+    close(fd);
+}
+
+void BerryImu::selectDevice(int addr) {
+    if (ioctl(this->fd, I2C_SLAVE, addr) == -1) {
+        throw std::system_error(errno, std::generic_category(), 
+                                "Failed to read byte from imu");
+    }
+}
+
+uint8_t BerryImu::readByte() {
+    auto result = i2c_smbus_read_byte(this->fd);
+    if (fd == -1) {
+        throw std::system_error(errno, std::generic_category(), 
+                                "Failed to read byte from imu");
+    }
+    return result;
+}
+
+void BerryImu::readBlock(uint8_t cmd, uint8_t size, uint8_t data[]) {
+    auto bytesRead = i2c_smbus_read_i2c_block_data(this->fd, cmd, size, data);
+    if (bytesRead != size) {
+        throw std::system_error(errno, std::generic_category(), 
+                                "Failed to read " + std::to_string(size) + " bytes from imu");
+    }
+}
 
 } // namespace mrf
