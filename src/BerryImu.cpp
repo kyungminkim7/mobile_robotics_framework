@@ -295,7 +295,7 @@ BerryImu::~BerryImu() {
 void BerryImu::selectDevice(int addr) {
     if (ioctl(this->fd, I2C_SLAVE, addr) == -1) {
         throw std::system_error(errno, std::generic_category(), 
-                                "Failed to read byte from imu");
+                                "Failed to select imu i2c device");
     }
 }
 
