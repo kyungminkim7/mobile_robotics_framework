@@ -13,6 +13,7 @@ find_package(OpenCV REQUIRED COMPONENTS
 add_subdirectory(extern)
 
 add_library(${PROJECT_NAME}
+    "src/BerryImu.cpp"
 )
 
 add_library(${package_name}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
@@ -26,12 +27,15 @@ target_include_directories(${PROJECT_NAME}
         "${CMAKE_CURRENT_SOURCE_DIR}/src"
 )
 
-target_link_libraries(${PROJECT_NAME} PUBLIC
-    network::network
-    opencv_core
-    opencv_imgcodecs
-    opencv_imgproc
-    opencv_videoio
+target_link_libraries(${PROJECT_NAME} 
+    PUBLIC
+        network::network
+        opencv_core
+        opencv_imgcodecs
+        opencv_imgproc
+        opencv_videoio
+    PRIVATE
+        i2c
 )
 
 target_compile_features(${PROJECT_NAME}
