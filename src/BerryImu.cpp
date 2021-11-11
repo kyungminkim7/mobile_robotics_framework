@@ -19,6 +19,8 @@ namespace LIS3MDL {
 
 constexpr auto ADDRESS     = 0x1C;
 
+constexpr auto MAG_ID      = 0x3D;
+
 constexpr auto WHO_AM_I    = 0x0F;
 
 constexpr auto CTRL_REG1   = 0x20;
@@ -49,6 +51,8 @@ constexpr auto INT_THS_H   = 0x33;
 namespace LSM6DSL {
 
 constexpr auto ADDRESS           = 0x6A;
+
+constexpr auto GYR_ID            = 0x6A;
 
 constexpr auto WHO_AM_I          = 0x0F;
 constexpr auto RAM_ACCESS        = 0x01;
@@ -99,6 +103,9 @@ namespace LSM9DS0 {
 constexpr auto MAG_ADDRESS          = 0x1E;
 constexpr auto ACC_ADDRESS          = 0x1E;
 constexpr auto GYR_ADDRESS          = 0x6A;
+
+constexpr auto ACC_ID               = 0xD4;
+constexpr auto GYR_ID               = 0x49;
 
 // Gyro Registers    
 constexpr auto WHO_AM_I_G           = 0x0F;
@@ -191,6 +198,8 @@ constexpr auto MAG_ADDRESS      = 0x1C;  //Would be 0x1E if SDO_M is HIGH
 constexpr auto ACC_ADDRESS      = 0x6A;
 constexpr auto GYR_ADDRESS      = 0x6A;  //Would be 0x6B if SDO_AG is HIGH
 
+constexpr auto MAG_ID           = 0x3D;
+constexpr auto GYR_ID           = 0x68;
 
 // Accel/Gyro (XL/G) Registers
 constexpr auto ACT_THS          = 0x04;
@@ -286,10 +295,58 @@ BerryImu::BerryImu(int device) {
         throw std::system_error(errno, std::generic_category(),
                                 "Failed to open " + filename);
     }
+
+    // Detect Berry Imu version and enable imu
+    try {
+        // Version 1
+        this->selectDevice(LSM9DS0::ACC_ADDRESS);
+        auto accelId = this->readByte(LSM9DS0::WHO_AM_I_XM);
+
+        this->selectDevice(LSM9DS0::GYR_ADDRESS);
+        auto gyroId = this->readByte(LSM9DS0::WHO_AM_I_G);
+        if (accelId == LSM9DS0::ACC_ID && gyroId == LSM9DS0::GYR_ID) {
+            this->accelAddr = LSM9DS0::ACC_ADDRESS;
+            this->gyroAddr = LSM9DS0::GYR_ADDRESS;
+            this->magAddr = LSM9DS0::MAG_ADDRESS;
+
+            return;
+        }
+
+        // Version 2
+        this->selectDevice(LSM9DS1::MAG_ADDRESS);
+        auto magId = this->readByte(LSM9DS1::WHO_AM_I_M);
+
+        this->selectDevice(LSM9DS1::GYR_ADDRESS);
+        gyroId = this->readByte(LSM9DS1::WHO_AM_I_XG);
+        if (magId == LSM9DS1::MAG_ID && gyroId == LSM9DS1::GYR_ID) {
+            this->accelAddr = LSM9DS1::ACC_ADDRESS;
+            this->gyroAddr = LSM9DS1::GYR_ADDRESS;
+            this->magAddr = LSM9DS1::MAG_ADDRESS;
+            return;
+        }
+
+        // Version 3
+        this->selectDevice(LIS3MDL::ADDRESS);
+        magId = this->readByte(LIS3MDL::WHO_AM_I);
+
+        this->selectDevice(LSM6DSL::ADDRESS);
+        gyroId = this->readByte(LSM6DSL::WHO_AM_I);
+        if (magId == LIS3MDL::MAG_ID && gyroId == LSM6DSL::GYR_ID) {
+            this->accelAddr = LSM6DSL::ADDRESS;
+            this->gyroAddr = LSM6DSL::ADDRESS;
+            this->magAddr = LIS3MDL::ADDRESS;
+            return;
+        }
+
+        throw std::system_error(std::make_error_code(std::errc::not_supported),
+                                "Failed to detect Berry Imu version");
+    } catch (...) {
+        close(this->fd);
+    }
 }
 
 BerryImu::~BerryImu() {
-    close(fd);
+    close(this->fd);
 }
 
 void BerryImu::selectDevice(int addr) {
@@ -313,6 +370,13 @@ void BerryImu::readBlock(uint8_t cmd, uint8_t size, uint8_t data[]) {
     if (bytesRead != size) {
         throw std::system_error(errno, std::generic_category(), 
                                 "Failed to read " + std::to_string(size) + " bytes from imu");
+    }
+}
+
+void BerryImu::writeByte(uint8_t reg, uint8_t value) {
+    if (i2c_smbus_write_byte_data(this->fd, reg, value) == -1) {
+        throw std::system_error(errno, std::generic_category(), 
+                                "Failed to write byte to imu");
     }
 }
 
