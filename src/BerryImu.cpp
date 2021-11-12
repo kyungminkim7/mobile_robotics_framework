@@ -309,6 +309,7 @@ BerryImu::BerryImu(int device) {
             this->gyroAddr = LSM9DS0::GYR_ADDRESS;
             this->magAddr = LSM9DS0::MAG_ADDRESS;
 
+            
             return;
         }
 
@@ -342,6 +343,7 @@ BerryImu::BerryImu(int device) {
                                 "Failed to detect Berry Imu version");
     } catch (...) {
         close(this->fd);
+        throw;
     }
 }
 
