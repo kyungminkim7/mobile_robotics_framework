@@ -433,4 +433,12 @@ void BerryImu::writeByte(uint8_t reg, uint8_t value) {
     }
 }
 
+Eigen::Vector3f getLinearAcceleration() {
+    return {0.0f, 0.0f, 0.0f};
+}
+
+Eigen::Vector3f getAngularVelocity() {
+    return {0.0f, 0.0f, 0.0f};
+}
+
 } // namespace mrf

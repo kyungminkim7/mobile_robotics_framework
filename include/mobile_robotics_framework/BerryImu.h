@@ -2,12 +2,17 @@
 
 #include <cstdint>
 
+#include <eigen3/Eigen/Core>
+
 namespace mrf {
 
 class BerryImu {
 public:
     explicit BerryImu(int device);
     ~BerryImu();
+
+    Eigen::Vector3f getLinearAcceleration();
+    Eigen::Vector3f getAngularVelocity();
 
 private:
     void selectDevice(int addr);

@@ -3,6 +3,8 @@ project(mobile_robotics_framework VERSION 1.0.0)
 
 set(package_name mobile_robotics_framework)
 
+find_package(Eigen3 REQUIRED)
+
 find_package(OpenCV REQUIRED COMPONENTS
     core
     imgcodecs
@@ -29,6 +31,7 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME} 
     PUBLIC
+        Eigen3::Eigen
         network::network
         opencv_core
         opencv_imgcodecs
