@@ -5,13 +5,6 @@ set(package_name mobile_robotics_framework)
 
 find_package(Eigen3 REQUIRED)
 
-find_package(OpenCV REQUIRED COMPONENTS
-    core
-    imgcodecs
-    imgproc
-    videoio
-)
-
 add_subdirectory(extern)
 
 add_library(${PROJECT_NAME}
@@ -33,10 +26,6 @@ target_link_libraries(${PROJECT_NAME}
     PUBLIC
         Eigen3::Eigen
         network::network
-        opencv_core
-        opencv_imgcodecs
-        opencv_imgproc
-        opencv_videoio
     PRIVATE
         i2c
 )
