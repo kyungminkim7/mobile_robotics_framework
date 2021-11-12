@@ -338,6 +338,25 @@ BerryImu::BerryImu(int device) {
             this->accelAddr = LSM9DS1::ACC_ADDRESS;
             this->gyroAddr = LSM9DS1::GYR_ADDRESS;
             this->magAddr = LSM9DS1::MAG_ADDRESS;
+
+            // Enable gyro
+            this->selectDevice(this->gyroAddr);
+            this->writeByte(LSM9DS1::CTRL_REG4, 0b00111000); // xyz axis enabled for gyro
+            this->writeByte(LSM9DS1::CTRL_REG1_G, 0b10111000); // Gyro ODR = 476Hz, 2000 dps
+            this->writeByte(LSM9DS1::ORIENT_CFG_G, 0b10111000); // Swap orientation
+
+            // Enable accelerometer
+            this->selectDevice(this->accelAddr);
+            this->writeByte(LSM9DS1::CTRL_REG5_XL, 0b00111000); // xyz axis enabled
+            this->writeByte(LSM9DS1::CTRL_REG6_XL, 0b00101000); // +/- 16g
+
+            // Enable magnetometer
+            this->selectDevice(this->magAddr);
+            this->writeByte(LSM9DS1::CTRL_REG1_M, 0b10011100); // Temp compensation enabled,Low power mode mode,80Hz ODR
+            this->writeByte(LSM9DS1::CTRL_REG2_M, 0b01000000); // +/-12gauss
+            this->writeByte(LSM9DS1::CTRL_REG3_M, 0b00000000); // Continuous update
+            this->writeByte(LSM9DS1::CTRL_REG4_M, 0b00000000); // Lower power mode for z axis
+
             return;
         }
 
@@ -351,6 +370,23 @@ BerryImu::BerryImu(int device) {
             this->accelAddr = LSM6DSL::ADDRESS;
             this->gyroAddr = LSM6DSL::ADDRESS;
             this->magAddr = LIS3MDL::ADDRESS;
+
+            // Enable gyro
+            this->selectDevice(this->gyroAddr);
+            this->writeByte(LSM6DSL::CTRL2_G, 0b10011100); // ODR 3.3 kHz, 2000 dps
+
+            // Enable accelerometer
+            this->selectDevice(this->accelAddr);
+            this->writeByte(LSM6DSL::CTRL1_XL, 0b10011111); // ODR 3.33 kHz, +/- 8g, BW = 400hz
+            this->writeByte(LSM6DSL::CTRL8_XL, 0b11001000); // Low pass filter enabled, BW9, composite filter
+            this->writeByte(LSM6DSL::CTRL3_C, 0b01000100); // Enable Block Data update, increment during multi byte read
+
+            // Enable magnetometer
+            this->selectDevice(this->magAddr);
+            this->writeByte(LIS3MDL::CTRL_REG1, 0b11011100); // Temp sesnor enabled, High performance, ODR 80 Hz, FAST ODR disabled and Selft test disabled
+            this->writeByte(LIS3MDL::CTRL_REG2, 0b00100000); // +/- 8 gauss
+            this->writeByte(LIS3MDL::CTRL_REG3, 0b00000000); // Continuous-conversion mode
+
             return;
         }
 
