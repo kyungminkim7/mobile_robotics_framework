@@ -1,14 +1,35 @@
+#include <cmath>
+#include <cstdlib>
 #include <iostream>
-
-#include <network/Node.h>
 
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/videoio.hpp>
 
+#include <mobile_robotics_framework/BerryImu.h>
+#include <network/Node.h>
+#include <network/Rate.h>
+
 const unsigned short IMG_PORT = 50000;
 
 int main(int argc, char *argv[]) {
+    constexpr float RAD_TO_DEG = 180 / M_PI;
+
+    mrf::BerryImu imu(1);
+
+    ntwk::Rate rate(5);
+    while(true) {
+        auto linearAccel = imu.getLinearAcceleration();
+        auto angularVel = imu.getAngularVelocity() * RAD_TO_DEG;
+
+        std::cout << "Linear accel:\n" << linearAccel << "\n\n";
+        std::cout << "Angular vel:\n" << angularVel << "\n\n";
+
+        rate.sleep();
+    }
+
+
+/**
     // Initialize ntwk publishers/subscribers
     ntwk::Node node;
 
@@ -30,5 +51,7 @@ int main(int argc, char *argv[]) {
         node.runOnce();
     }
 
-    return 0;
+**/
+
+    return EXIT_SUCCESS;
 }
