@@ -23,10 +23,20 @@ private:
     void writeByte(uint8_t reg, uint8_t value);
 
 private:
-    int fd;
+    int fd; // Imu i2c file descriptor
+
+    // I2c device addresses
     int accelAddr;
     int gyroAddr;
     int magAddr;
+
+    // I2c cmds
+    int accelReadCmd;
+    int gyroReadCmd;
+    int magReadCmd;
+
+    float accelGain_mps2;
+    float gyroGain_rad;
 };
 
 } // mrf

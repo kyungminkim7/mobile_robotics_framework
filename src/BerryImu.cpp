@@ -1,5 +1,7 @@
 #include <mobile_robotics_framework/BerryImu.h>
 
+#include <array>
+#include <cmath>
 #include <string>
 #include <system_error>
 
@@ -284,6 +286,13 @@ constexpr auto WHO_AM_I_M_RSP   = 0x3D;
 
 } // namespace LSM9DS1
 
+constexpr float DEG_TO_RAD = M_PI / 180;
+
+float calculateAccelGain_mps2(int sensitivityLvl_G) {
+    constexpr auto gravityAccel_mps2 = 9.80665f;
+    return sensitivityLvl_G * 2 / std::pow(2,16) * gravityAccel_mps2;
+}
+
 } // namespace
 
 namespace mrf {
@@ -309,6 +318,10 @@ BerryImu::BerryImu(int device) {
             this->gyroAddr = LSM9DS0::GYR_ADDRESS;
             this->magAddr = LSM9DS0::MAG_ADDRESS;
 
+            this->accelReadCmd = 0x80 | LSM9DS0::OUT_X_L_A;
+            this->gyroReadCmd = 0x80 | LSM9DS0::OUT_X_L_G;
+            this->magReadCmd = 0x80 | LSM9DS0::OUT_X_L_M;
+
             // Enable gyro
             this->selectDevice(this->gyroAddr);
             this->writeByte(LSM9DS0::CTRL_REG1_G, 0b00001111); // Normal power mode, all axes enabled
@@ -324,6 +337,10 @@ BerryImu::BerryImu(int device) {
             this->writeByte(LSM9DS0::CTRL_REG5_XM, 0b11110000); // Temp enable, M data rate = 50Hz
             this->writeByte(LSM9DS0::CTRL_REG6_XM, 0b11110000); // +/-12gauss
             this->writeByte(LSM9DS0::CTRL_REG7_XM, 0b00000000); // Continuous-conversion mode
+
+            // Calculate device gains
+            this->accelGain_mps2 = calculateAccelGain_mps2(16);
+            this->gyroGain_rad = 0.07f * DEG_TO_RAD;
             
             return;
         }
@@ -338,6 +355,10 @@ BerryImu::BerryImu(int device) {
             this->accelAddr = LSM9DS1::ACC_ADDRESS;
             this->gyroAddr = LSM9DS1::GYR_ADDRESS;
             this->magAddr = LSM9DS1::MAG_ADDRESS;
+
+            this->accelReadCmd = LSM9DS1::OUT_X_L_XL;
+            this->gyroReadCmd = LSM9DS1::OUT_X_L_G;
+            this->magReadCmd = LSM9DS1::OUT_X_L_M;
 
             // Enable gyro
             this->selectDevice(this->gyroAddr);
@@ -357,6 +378,10 @@ BerryImu::BerryImu(int device) {
             this->writeByte(LSM9DS1::CTRL_REG3_M, 0b00000000); // Continuous update
             this->writeByte(LSM9DS1::CTRL_REG4_M, 0b00000000); // Lower power mode for z axis
 
+            // Calculate device gains
+            this->accelGain_mps2 = calculateAccelGain_mps2(16);
+            this->gyroGain_rad = 0.07f * DEG_TO_RAD;
+
             return;
         }
 
@@ -370,6 +395,10 @@ BerryImu::BerryImu(int device) {
             this->accelAddr = LSM6DSL::ADDRESS;
             this->gyroAddr = LSM6DSL::ADDRESS;
             this->magAddr = LIS3MDL::ADDRESS;
+
+            this->accelReadCmd = LSM6DSL::OUTX_L_XL;
+            this->gyroReadCmd = LSM6DSL::OUTX_L_G;
+            this->magReadCmd = LIS3MDL::OUT_X_L;
 
             // Enable gyro
             this->selectDevice(this->gyroAddr);
@@ -386,6 +415,10 @@ BerryImu::BerryImu(int device) {
             this->writeByte(LIS3MDL::CTRL_REG1, 0b11011100); // Temp sesnor enabled, High performance, ODR 80 Hz, FAST ODR disabled and Selft test disabled
             this->writeByte(LIS3MDL::CTRL_REG2, 0b00100000); // +/- 8 gauss
             this->writeByte(LIS3MDL::CTRL_REG3, 0b00000000); // Continuous-conversion mode
+
+            // Calculate device gains
+            this->accelGain_mps2 = calculateAccelGain_mps2(8);
+            this->gyroGain_rad = 0.07f * DEG_TO_RAD;
 
             return;
         }
@@ -433,12 +466,30 @@ void BerryImu::writeByte(uint8_t reg, uint8_t value) {
     }
 }
 
-Eigen::Vector3f getLinearAcceleration() {
-    return {0.0f, 0.0f, 0.0f};
+Eigen::Vector3f BerryImu::getLinearAcceleration() {
+    this->selectDevice(this->accelAddr);
+    std::array<uint8_t, 6> block;
+    this->readBlock(this->accelReadCmd, block.size(), block.data());
+
+    // Combine readings for each axis
+    return {
+        static_cast<int16_t>(block[0] | block[1] << 8) * this->accelGain_mps2,
+        static_cast<int16_t>(block[2] | block[3] << 8) * this->accelGain_mps2,
+        static_cast<int16_t>(block[4] | block[5] << 8) * this->accelGain_mps2
+    };
 }
 
-Eigen::Vector3f getAngularVelocity() {
-    return {0.0f, 0.0f, 0.0f};
+Eigen::Vector3f BerryImu::getAngularVelocity() {
+    this->selectDevice(this->gyroAddr);
+    std::array<uint8_t, 6> block;
+    this->readBlock(this->gyroReadCmd, block.size(), block.data());
+
+    // Combine readings for each axis
+    return {
+        static_cast<int16_t>(block[0] | block[1] << 8) * this->gyroGain_rad,
+        static_cast<int16_t>(block[2] | block[3] << 8) * this->gyroGain_rad,
+        static_cast<int16_t>(block[4] | block[5] << 8) * this->gyroGain_rad
+    };
 }
 
 } // namespace mrf
